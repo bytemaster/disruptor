@@ -24,16 +24,16 @@ should read from one or more sources and write to its own outbut buffer.
 
 Features
 ==========
-  * Progress-backoff blocking.  When one cursor needs to wait on another it starts
+  * Progressive-backoff blocking.  When one cursor needs to wait on another it starts
 out with a busy wait, followed by a yield, and ultimately falls back to sleeping
 wait if the queue is stalled.  
 
-   * Batch writing / Reading with 'iterator like' interface.  Producers and consumers
-   always work with a 'range' of valid positions.   The ring buffer provides the
-   ability to detect 'wraping' and therefore it should be possible to use this as
-   a data queue for a socket that can read/write many slots all at once.  Slots
-   could be single bytes and the result would be a very effecient stream-processing
-   library.  This manner of operation is not possible with LMAX's API. 
+  * Batch writing / Reading with 'iterator like' interface.  Producers and consumers
+  always work with a 'range' of valid positions.   The ring buffer provides the
+  ability to detect 'wraping' and therefore it should be possible to use this as
+  a data queue for a socket that can read/write many slots all at once.  Slots
+  could be single bytes and the result would be a very effecient stream-processing
+  library.  This manner of operation is not possible with LMAX's API. 
 
 Performance
 ===========
