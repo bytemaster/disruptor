@@ -82,7 +82,7 @@ int main( int argc, char** argv )
       {
          auto pos = a->begin();
          auto end = a->end();
-         while( pos < int64_t(iterations) ) 
+         while( true ) //pos < int64_t(iterations) ) 
          {
             if( pos == end )
             {
@@ -113,8 +113,8 @@ int main( int argc, char** argv )
             }
             if( pos % 10000000ll == 9934000 )
             {
-                std::cerr<<"THROWING! "<<pos<<"\n";
-                c->set_alert(std::make_exception_ptr(cursor_error("threadb")));
+         //       std::cerr<<"THROWING! "<<pos<<"\n";
+          //      c->set_alert(std::make_exception_ptr(cursor_error("threadb")));
             }
             else
             {

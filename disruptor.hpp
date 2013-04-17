@@ -280,7 +280,9 @@ class read_cursor : public event_cursor
              throw eof();
           }
           return _end;
-         } catch ( ... ) { set_alert( std::current_exception() ); throw; }
+         } 
+         catch ( const eof& ) { _cursor.set_eof(); throw; }
+         catch ( ... ) { set_alert( std::current_exception() ); throw; }
       }
 };
 
@@ -331,7 +333,6 @@ class write_cursor : public event_cursor
          } 
          catch ( ... ) 
          { 
-            std::cerr<<"write cursor set alert!\n";
             set_alert( std::current_exception() ); throw; 
          }
       }
@@ -358,12 +359,14 @@ inline int64_t barrier::wait_for( int64_t pos )const
       for( int i = 0; itr_pos < pos && i < 10000; ++i  )
       {
          itr_pos = (*itr)->pos().aquire();
+         if( (*itr)->pos().alert() ) break;
       }
       // yield for a while, queue slowing down
       for( int y = 0; itr_pos < pos && y < 10000; ++y )
       {
          usleep(0);
          itr_pos = (*itr)->pos().aquire();
+         if( (*itr)->pos().alert() ) break;
       }
 
       // queue stalled, don't peg the CPU but don't wait
@@ -372,11 +375,11 @@ inline int64_t barrier::wait_for( int64_t pos )const
       {
          usleep( 10*1000 );
          itr_pos = (*itr)->pos().aquire();
+         if( (*itr)->pos().alert() ) break;
       }
 
       if( (*itr)->pos().alert() )
       {
-         std::cerr<<"Alert!\n";
          (*itr)->check_alert();
          if( itr_pos > pos ) 
             return itr_pos -1; // process everything up to itr_pos
