@@ -13,11 +13,11 @@ Design
 There are 3 primary types that users of the API must be familiar
 with:
 
-   * ring_buffer<T,Size>  is a circular buffer with Power of 2 Size
-   * write_cursor         tracks a position in the buffer and can follow
-                          other read cursors to ensure things don't wrap.
-   * read_cursor          tracks the read position and can follow / block
-                          on other cursors (read or write).
+   * *ring_buffer<T,Size>*  is a circular buffer with Power of 2 Size
+   * *write_cursor*         tracks a position in the buffer and can follow
+                            other read cursors to ensure things don't wrap.
+   * *read_cursor*          tracks the read position and can follow / block
+                            on other cursors (read or write).
 
 The concept of the cursors are separated from the data storage.  Every cursor
 should read from one or more sources and write to its own outbut buffer.  
