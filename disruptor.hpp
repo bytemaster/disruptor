@@ -76,6 +76,13 @@ class barrier
    public:
       void follows( std::shared_ptr<const event_cursor> e );
 
+      /**
+       *  Used to check how much you can read/write without blocking.
+       *
+       *  @return the min position of every cusror this barrier follows.
+       */
+      int64_t get_min();
+
       /*
        *  This method will wait until all s in seq >= pos using a progressive
        *  backoff of busy wait, yield, and usleep(10*1000)
@@ -272,17 +279,15 @@ class read_cursor : public event_cursor
       int64_t wait_for( int64_t pos )
       {
          try {
-          // throws on alert, returns short on eof
           return _end = _barrier.wait_for(pos) + 1;
-          if( _end <= pos  ) 
-          { 
-             _cursor.set_eof(); 
-             throw eof();
-          }
-          return _end;
-         } 
+         }
          catch ( const eof& ) { _cursor.set_eof(); throw; }
          catch ( ... ) { set_alert( std::current_exception() ); throw; }
+      }
+      /** find the current end without blocking */
+      int64_t check_end()
+      {
+          return _end = _barrier.get_min();
       }
 };
 
@@ -318,6 +323,7 @@ class write_cursor : public event_cursor
          _cursor.store(-1);
       }
 
+
       /**
        *   We need to wait until the available space in
        *   the ring buffer is  pos - cursor which means that
@@ -336,13 +342,95 @@ class write_cursor : public event_cursor
             set_alert( std::current_exception() ); throw; 
          }
       }
+      int64_t check_end()
+      {
+          return _end = _barrier.get_min() + _size;
+      }
     private:
       const int64_t _size;
       const int64_t _size_m1;
 };
+
+/**
+ *  When there are multiple writers this cursor can
+ *  be used to reserve space in the write buffer 
+ *  in an atomic manner.
+ *
+ *  @code
+ *  auto start = cur->claim(slots);
+ *  ... do your writes...
+ *  cur->publish_after( start + slots, start -1 );
+ *  @endcode
+ *
+ */
+class shared_write_cursor : public write_cursor 
+{
+   public:
+      /** @param s - the size of the ringbuffer, 
+       *  required to do proper wrap detection 
+       **/
+      shared_write_cursor(int64_t s)
+      :write_cursor(s){}
+
+      /**
+       * @param n - name of the cursor for debug purposes
+       * @param s - the size of the buffer.  
+       */
+      shared_write_cursor(const char* n, int64_t s)
+      :write_cursor(n,s){}
+
+      /** When there are multiple writers they cannot both
+       *  assume the right to write to begin() to end(), 
+       *  instead they must first claim some slots in an
+       *  atomic manner.
+       *
+       *
+       *  After pos().aquire() == claim( slots ) -1 the claimer
+       *  is free to call publish up to start + slots -1 
+       *
+       *  @return the first slot the caller may write to.
+       */   
+      int64_t claim( size_t num_slots )
+      {
+           auto pos = _claim_cursor.atomic_increment_and_get( num_slots );
+           // make sure there is enough space to write
+           wait_for( pos ); // TODO: -1????
+           return pos - num_slots;
+      }
+
+      void publish_after( int64_t pos, int64_t after_pos )
+      {
+         try {
+            assert( pos > after_pos );
+             _barrier.wait_for(after_pos);
+            publish( pos );
+         }
+         catch ( const eof& ) { _cursor.set_eof(); throw; }
+         catch ( ... ) { set_alert( std::current_exception() ); throw; }
+      }
+
+    private:
+      sequence      _claim_cursor;
+};
+
+
+
+
+
 inline void barrier::follows( std::shared_ptr<const event_cursor> e )
 {
     _limit_seq.push_back( std::move(e) );
+}
+
+inline int64_t barrier::get_min()
+{
+   int64_t min_pos = 0x7fffffffffffffff;
+   for( auto itr = _limit_seq.begin(); itr != _limit_seq.end(); ++itr )
+   {
+      auto itr_pos = (*itr)->pos().aquire();
+      if( itr_pos < min_pos ) min_pos = itr_pos;
+   }
+   return _last_min = min_pos;
 }
 
 inline int64_t barrier::wait_for( int64_t pos )const
