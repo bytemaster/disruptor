@@ -287,9 +287,11 @@ class read_cursor : public event_cursor
       /** find the current end without blocking */
       int64_t check_end()
       {
-          return _end = _barrier.get_min();
+          return _end = _barrier.get_min() + 1;
       }
 };
+
+typedef std::shared_ptr<read_cursor> read_cursor_ptr;
 
 /**
  *  Tracks the write position in a buffer.
@@ -323,6 +325,16 @@ class write_cursor : public event_cursor
          _cursor.store(-1);
       }
 
+      /** waits for begin() to be valid and then
+       *  returns it.  This is only safe for 
+       *  single producers, multi-producers should 
+       *  use claim(1) instead.
+       */
+      int64_t wait_next() 
+      {
+          wait_for( _begin );
+          return _begin;
+      }
 
       /**
        *   We need to wait until the available space in
@@ -351,6 +363,7 @@ class write_cursor : public event_cursor
       const int64_t _size_m1;
 };
 
+typedef std::shared_ptr<write_cursor> write_cursor_ptr;
 /**
  *  When there are multiple writers this cursor can
  *  be used to reserve space in the write buffer 
@@ -412,8 +425,7 @@ class shared_write_cursor : public write_cursor
     private:
       sequence      _claim_cursor;
 };
-
-
+typedef std::shared_ptr<shared_write_cursor> shared_write_cursor_ptr;
 
 
 

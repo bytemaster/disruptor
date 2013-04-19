@@ -1,4 +1,4 @@
-#include "disruptor.hpp"
+#include <disruptor/disruptor.hpp>
 #include <thread>
 #include <stdexcept>
 #include <iostream>
