@@ -13,9 +13,10 @@ void count( int64_t c, disruptor::thread* source, disruptor::thread* reply )
 
 int main( int argc, char** argv )
 {
-    thread_a->post( [=]() { count( 1, thread_a, thread_b ); } );
     thread_a->start();
     thread_b->start();
+    usleep( 1000*1000*30 );
+    thread_a->post( [=]() { count( 1, thread_a, thread_b ); } );
     thread_a->join();
     thread_b->join();
     return 0;

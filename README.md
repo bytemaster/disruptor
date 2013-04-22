@@ -16,8 +16,15 @@ with:
    * *ring_buffer<T,Size>*  is a circular buffer with Power of 2 Size
    * *write_cursor*         tracks a position in the buffer and can follow
                             other read cursors to ensure things don't wrap.
+   * *shared_write_cursor*  is a write_cursor that may be used from multiple threads
+                            other read cursors to ensure things don't wrap.
    * *read_cursor*          tracks the read position and can follow / block
                             on other cursors (read or write).
+   * *thread*               enables posting of functors to be executed by
+                            another thread.  This class is 30x faster than
+                            fc::thread at posting a request between threads
+                            and fc::thread already used a lock-free algorithm
+                            with 'constant' event posting time.
 
 The concept of the cursors are separated from the data storage.  Every cursor
 should read from one or more sources and write to its own outbut buffer.  
@@ -39,16 +46,5 @@ Performance
 ===========
 Simple benchmarks indicate that performance of this implementation is better than
 other known C++ implementations of this pattern.  
-
-
-Todo
-===========
-Multi-Producer write cursor / pattern.  Generally I think it is best to structure 
-your code to avoid this use case all together.  If multiple producers need to
-send data to a single consumer, the consumer should give them each their own queue
-and then procses the results 'round-robin'.  Assuming the number of producers is
-known in advance this would represent a 'fixed cost' one-time setup and avoid the
-need to use atomic operations all together.
-
 
 

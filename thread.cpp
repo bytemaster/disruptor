@@ -62,7 +62,7 @@ class thread_impl
              spin_count += inc_spin;
 
              // progress backoff... until a maximum of 10 ms 
-             if( spin_count > 1000 ) usleep( std::min<int64_t>( spin_count >> 11,  10*1000) );
+             if( spin_count > 1000 ) usleep( std::min<int64_t>( spin_count >> 4,  40*1000) );
          }
       }
 
